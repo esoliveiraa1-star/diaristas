@@ -66,6 +66,12 @@ button.b:disabled{opacity:.5}
   <button class="b pri" id="gerarpdf" type="button">Gerar PDF</button>
   <button class="b" id="limpar" type="button">Limpar lista</button>
 </section>
+<section class="row">
+  <h2>Lista assinada</h2>
+  <p class="hint">Depois de assinada no papel, tire a foto aqui. Ela segue direto para o controle, com unidade, data e turno desta tela.</p>
+  <button class="b pri" id="enviar" type="button">Enviar lista assinada</button>
+  <input id="foto" type="file" accept="image/*" capture="environment" hidden>
+</section>
 </main>
 <div id="msg" role="status"></div>
 
@@ -757,6 +763,44 @@ function baixarPdf(){
   try{var doc=buildPdf(window.jspdf.jsPDF,LOGO_B64,dados());salvar(doc.output('blob'),nomeArquivo('pdf'))}catch(e){msg('Erro ao gerar o PDF',true)}
 }
 
+var ENVIO_URL='https://script.google.com/macros/s/AKfycbz53nBLQGNSWwnX5992-uR7k96I2jBVn9CeKaFNtrXYkiyUjOMTNfNy5LXCHJwvPGIUQA/exec';
+var pinMem='';
+function getPin(){try{return localStorage.getItem('diaristas_pin')||pinMem}catch(e){return pinMem}}
+function setPin(v){pinMem=v;try{if(v)localStorage.setItem('diaristas_pin',v);else localStorage.removeItem('diaristas_pin')}catch(e){}}
+function fotoParaBase64(file){
+  return new Promise(function(res,rej){
+    var img=new Image(),u=URL.createObjectURL(file);
+    img.onload=function(){
+      var M=1800,w=img.naturalWidth,h=img.naturalHeight,k=Math.min(1,M/Math.max(w,h));
+      var c=document.createElement('canvas');c.width=Math.round(w*k);c.height=Math.round(h*k);
+      c.getContext('2d').drawImage(img,0,0,c.width,c.height);
+      URL.revokeObjectURL(u);
+      res(c.toDataURL('image/jpeg',0.75).split(',')[1]);
+    };
+    img.onerror=function(){URL.revokeObjectURL(u);rej(new Error('img'))};
+    img.src=u;
+  });
+}
+async function enviarLista(file){
+  var b=$('enviar');
+  b.disabled=true;b.textContent='Enviando...';
+  try{
+    var foto=await fotoParaBase64(file);
+    var r=await fetch(ENVIO_URL,{method:'POST',body:JSON.stringify({pin:getPin(),unidade:S.unidade,data:S.data,turno:S.turno,foto:foto})});
+    var j=await r.json();
+    if(j.ok)msg('Lista enviada: '+j.nome);
+    else if(j.erro==='pin'){setPin('');msg('Código de envio inválido. Tente de novo.',true)}
+    else msg('Não foi possível enviar ('+(j.erro||'erro')+')',true);
+  }catch(e){msg('Falha no envio. Verifique a internet e tente de novo.',true)}
+  b.disabled=false;b.textContent='Enviar lista assinada';
+}
+function clicarEnviar(){
+  if(!S.unidade){var u=$('unidade');u.classList.add('invalid');u.scrollIntoView({block:'center',behavior:'smooth'});msg('Selecione a Unidade',true);return}
+  if(!navigator.onLine){msg('Sem internet. Envie quando tiver sinal.',true);return}
+  if(!getPin()){var v=prompt('Código de envio:');if(!v||!v.trim())return;setPin(v.trim())}
+  $('foto').value='';$('foto').click();
+}
+
 function init(){
   load();
   fillSelect($('turno'),TURNOS);fillSelect($('unidade'),UNIDADES,'Selecione...');fillSelect($('setor'),SETORES,'Selecione...');
@@ -779,6 +823,8 @@ function init(){
   $('add').addEventListener('click',function(){S.pessoas.push(novaPessoa());save();render();var cards=$('lista').children;var n=cards[cards.length-1];n.scrollIntoView({block:'center',behavior:'smooth'});n.querySelector('[data-f="nome"]').focus()});
   $('gerar').addEventListener('click',baixarExcel);
   $('gerarpdf').addEventListener('click',baixarPdf);
+  $('enviar').addEventListener('click',clicarEnviar);
+  $('foto').addEventListener('change',function(){if(this.files&&this.files[0])enviarLista(this.files[0])});
   $('limpar').addEventListener('click',function(){if(confirm('Apagar todas as pessoas da lista?')){S.pessoas=[novaPessoa()];save();clearErr();render()}});
   if('serviceWorker' in navigator&&location.protocol.indexOf('http')===0){
     var tinha=!!navigator.serviceWorker.controller,rl=false;
