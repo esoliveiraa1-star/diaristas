@@ -529,7 +529,7 @@ async function buildXlsx(ExcelJS, templateBuf, d) {
     ls.alignment = Object.assign({}, ls.alignment, { horizontal: 'center' });
     leaderStyle[c] = ls;
   }
-  const unitShort = d.unidade.split(' - ').slice(1).join(' - ') || d.unidade;
+  const unitShort = (d.unidade.split(' - ').length > 2 ? d.unidade.split(' - ').slice(1).join(' - ') : d.unidade);
   ws.name = unitShort.replace(/[\[\]:*?\/\\]/g, '').slice(0, 31);
   ws.getCell('A1').value = 'OPERAÇÕES XD - ' + d.unidade;
   ws.getCell('A2').value = 'Turno: ' + d.turno + '               Data: ' + d.dataBR +
@@ -576,7 +576,7 @@ function buildPdf(jsPDF, logoB64, d) {
   var cw = rel.map(function (r) { return r / tot * W; });
   var cx = [M]; for (var k = 0; k < 8; k++) cx.push(cx[k] + cw[k]);
   var sum = function (a, b) { var s = 0; for (var i = a; i <= b; i++) s += cw[i]; return s; };
-  var unitShort = d.unidade.split(' - ').slice(1).join(' - ') || d.unidade;
+  var unitShort = (d.unidade.split(' - ').length > 2 ? d.unidade.split(' - ').slice(1).join(' - ') : d.unidade);
   var NR = ['NR-1 – Disposições Gerais e Gerenciamento de Riscos Ocupacionais.',
     'NR-6 – Equipamentos de Proteção Individual (EPI).',
     'NR-11 – Transporte, Movimentação, Armazenagem e Manuseio de Materiais.',
