@@ -41,7 +41,7 @@ button.b:disabled{opacity:.5}
 </style>
 </head>
 <body>
-<header><h1>Lista dos Diaristas</h1><p>Preencha, gere o Excel e envie. Funciona sem internet.</p></header>
+<header><h1>Cadastro de Diaristas</h1><p>Preencha, gere o Excel e envie. Funciona sem internet.</p></header>
 <main>
 <section>
   <h2>Cabeçalho</h2>
@@ -658,7 +658,7 @@ function buildPdf(jsPDF, logoB64, d) {
 <script>
 (function(){
 'use strict';
-var UNIDADES=['Imile - Imile - Aparecida de Goiânia','ANJUN - Anjun - Aparecida de Goiânia','JAMEF - Jamef - Aparecida de Goiânia'];
+var UNIDADES=['Imile - Imile - Aparecida de Goiânia','ANJUN - Anjun - Aparecida de Goiânia','JAMEF - Jamef - Aparecida de Goiânia','IMILE - TOCANTINS'];
 var SETORES=['OPERACIONAL','ASG'];
 var TURNOS=['T1','T2','T3'];
 var KEY='cadastro-diaristas-v1';
@@ -735,7 +735,9 @@ function dados(){
   return {unidade:S.unidade,turno:S.turno,setor:S.setor,dataBR:dp[2]+'/'+dp[1]+'/'+dp[0],
     pessoas:S.pessoas.map(function(p){return {nome:p.nome.trim().replace(/\s+/g,' '),cpf:p.cpf,nasc:p.nasc,pix:p.pix.trim(),cargo:S.cargo.trim().toUpperCase(),entrada:S.entrada,saida:S.saida}})};
 }
-function nomeArquivo(ext){var dp=S.data.split('-');return S.unidade.split(' - ')[0].toUpperCase()+'_APG_'+dp[2]+'_'+dp[1]+'.'+(ext||'xlsx')}
+function nomeArquivo(ext){var dp=S.data.split('-'),pt=S.unidade.split(' - '),loc=pt[pt.length-1];
+  var suf=/Aparecida de Goiânia/.test(loc)?'APG':loc.toUpperCase().replace(/[^A-Z0-9]+/g,'_');
+  return pt[0].toUpperCase()+'_'+suf+'_'+dp[2]+'_'+dp[1]+'.'+(ext||'xlsx')}
 
 function tplBuf(){var b=atob(TEMPLATE_B64),u=new Uint8Array(b.length);for(var i=0;i<b.length;i++)u[i]=b.charCodeAt(i);return u.buffer}
 async function gerarBlob(){
@@ -778,7 +780,11 @@ function init(){
   $('gerar').addEventListener('click',baixarExcel);
   $('gerarpdf').addEventListener('click',baixarPdf);
   $('limpar').addEventListener('click',function(){if(confirm('Apagar todas as pessoas da lista?')){S.pessoas=[novaPessoa()];save();clearErr();render()}});
-  if('serviceWorker' in navigator&&location.protocol.indexOf('http')===0)navigator.serviceWorker.register('sw.js').catch(function(){});
+  if('serviceWorker' in navigator&&location.protocol.indexOf('http')===0){
+    var tinha=!!navigator.serviceWorker.controller,rl=false;
+    navigator.serviceWorker.addEventListener('controllerchange',function(){if(tinha&&!rl){rl=true;location.reload()}});
+    navigator.serviceWorker.register('sw.js').catch(function(){});
+  }
   window.__app={baixarPdf:baixarPdf,S:function(){return S},validar:validar,dados:dados,gerarBlob:gerarBlob,nomeArquivo:nomeArquivo,render:render};
 }
 init();
