@@ -763,7 +763,7 @@ function baixarPdf(){
   try{var doc=buildPdf(window.jspdf.jsPDF,LOGO_B64,dados());salvar(doc.output('blob'),nomeArquivo('pdf'))}catch(e){msg('Erro ao gerar o PDF',true)}
 }
 
-var ENVIO_URL='https://script.google.com/macros/s/AKfycbzqU2eLuk8s72bP7HgOXeGv4qR5BU7b6z9HVqdOewJRljoeVcr7fodYebMCIApcuKxAlw/exec';
+var ENVIO_URL='https://script.google.com/macros/s/AKfycbyAKA3ACuFW28W8aJh03mAqDXc4dq6Tt9D9zP1n8SX_IAyzVau3W-UoXvDJDmM9mnABcw/exec';
 var pinMem='';
 function getPin(){try{return localStorage.getItem('diaristas_pin')||pinMem}catch(e){return pinMem}}
 function setPin(v){pinMem=v;try{if(v)localStorage.setItem('diaristas_pin',v);else localStorage.removeItem('diaristas_pin')}catch(e){}}
