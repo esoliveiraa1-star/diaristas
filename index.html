@@ -38,8 +38,6 @@ button.b:disabled{opacity:.5}
 .row{display:grid;gap:8px}
 #msg{position:fixed;left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom,0));max-width:616px;margin:0 auto;background:#111;color:#fff;padding:12px 14px;border-radius:10px;font-size:14px;display:none;z-index:9}
 #msg.err2{background:#991b1b}
-#sigpad{display:block;width:100%;height:170px;background:#fff;border:1px dashed var(--line);border-radius:10px;touch-action:none;-webkit-user-select:none;user-select:none;cursor:crosshair}
-.sigst{font-size:12px;color:var(--mut);margin:8px 0 0;min-height:16px}
 </style>
 </head>
 <body>
@@ -62,14 +60,6 @@ button.b:disabled{opacity:.5}
   <p class="hint">Para marcar o líder, coloque *** antes e depois do nome. A Chave PIX é preenchida com o CPF, mas pode ser alterada.</p>
   <div id="lista"></div>
   <button class="b" id="add" type="button">+ Adicionar pessoa</button>
-</section>
-<section id="assinar">
-  <h2>Assinatura do contratante</h2>
-  <p class="hint">O contratante assina com o dedo no quadro. A assinatura sai na lista (PDF e Excel). Opcional: sem assinatura, a lista sai com a linha em branco para assinar no papel.</p>
-  <div class="f" style="margin-bottom:10px"><label for="signome">Nome de quem assina</label><input id="signome" type="text" autocomplete="off" autocapitalize="words"></div>
-  <canvas id="sigpad"></canvas>
-  <p class="sigst" id="sigst"></p>
-  <button class="b" id="sigclr" type="button" style="margin-top:8px">Limpar assinatura</button>
 </section>
 <section class="row">
   <button class="b pri" id="gerar" type="button">Gerar Excel</button>
@@ -580,22 +570,6 @@ async function buildXlsx(ExcelJS, templateBuf, d) {
     h.value = time(p.saida);   h.numFmt = 'hh:mm';
     row.commit && row.commit();
   }
-  if (d.assin) {
-    // assinatura na tela: bloco logo após a tabela; a linha em branco do rodapé deixa de ser impressa
-    try { var hf = ws.headerFooter; if (hf && hf.oddFooter) hf.oddFooter = hf.oddFooter.replace(/[ \t]*ASSINATURA CONTRATANTE:[_ \t]*(\r?\n)?/, ''); } catch (e) {}
-    var r0 = last + 2;
-    for (var q = r0; q <= r0 + 3; q++) ws.getRow(q).height = 14.25;
-    var lab = ws.getCell(r0 + 1, 2);
-    lab.value = 'ASSINATURA CONTRATANTE:';
-    lab.font = { name: 'Calibri', size: 9, bold: true };
-    for (var cc = 3; cc <= 6; cc++) ws.getCell(r0 + 2, cc).border = { bottom: { style: 'thin' } };
-    var kf = Math.min(250 / d.assin.w, 54 / d.assin.h);
-    var imgId = wb.addImage({ base64: d.assin.img, extension: 'png' });
-    ws.addImage(imgId, { tl: { col: 2.1, row: r0 - 1 + 0.9 }, ext: { width: d.assin.w * kf, height: d.assin.h * kf } });
-    var note = ws.getCell(r0 + 3, 2);
-    note.value = 'Assinado na tela por ' + d.assin.nome + ' em ' + d.assin.dtBR;
-    note.font = { name: 'Calibri', size: 8, italic: true };
-  }
   return wb.xlsx.writeBuffer();
 }
 </script>
@@ -614,7 +588,7 @@ function buildPdf(jsPDF, logoB64, d) {
     'NR-11 – Transporte, Movimentação, Armazenagem e Manuseio de Materiais.',
     'NR-17 – Ergonomia.', 'NR-12 – Segurança no Trabalho em Máquinas e Equipamentos.'];
   var HEADS = ['', 'NOME COMPLETO', 'CPF', 'DATA NASCIMENTO', 'CHAVE PIX', 'CARGO', 'ENTRADA', 'SAÍDA', 'ASSINATURA DO COLABORADOR'];
-  var Y0 = 10, H1 = 17, H2 = 6, H3 = 8, RH = 4.4, FOOT = d.assin ? 20 : 14;
+  var Y0 = 10, H1 = 17, H2 = 6, H3 = 8, RH = 4.4, FOOT = 14;
   var yRows = Y0 + H1 + H2 + H3;
   var perPage = Math.floor((210 - M - FOOT - yRows) / RH);
   var pages = Math.max(1, Math.ceil(d.pessoas.length / perPage));
@@ -679,16 +653,8 @@ function buildPdf(jsPDF, logoB64, d) {
     doc.setLineWidth(0.3);
     doc.rect(M, Y0, W, yRows - Y0 + perPage * RH);
     doc.setFont('helvetica', 'normal'); doc.setFontSize(7);
-    var fy = yRows + perPage * RH + (d.assin ? 12 : 6);
+    var fy = yRows + perPage * RH + 6;
     doc.text('ASSINATURA CONTRATANTE: ' + '_'.repeat(52), M + 2, fy);
-    if (d.assin) {
-      var lw0 = doc.getTextWidth('ASSINATURA CONTRATANTE: '), uw = doc.getTextWidth('_'.repeat(52));
-      var kf = Math.min((uw - 2) / d.assin.w, 11 / d.assin.h), iw = d.assin.w * kf, ih = d.assin.h * kf;
-      doc.addImage(d.assin.img, 'PNG', M + 2 + lw0 + (uw - iw) / 2, fy - ih + 0.8, iw, ih);
-      doc.setFontSize(6);
-      doc.text('Assinado na tela por ' + d.assin.nome + ' em ' + d.assin.dtBR, PW - M - 2, fy, { align: 'right' });
-      doc.setFontSize(7);
-    }
     doc.text('ASSINATURA CONTRATADO: ' + '_'.repeat(53), M + 2, fy + 4.5);
     doc.text('DATA:   ___________/_________/_________', PW - M - 2, fy + 4.5, { align: 'right' });
   }
@@ -708,10 +674,9 @@ var $=function(id){return document.getElementById(id)};
 function pad(n){return (n<10?'0':'')+n}
 function hoje(){var d=new Date();return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())}
 function novaPessoa(){return {nome:'',cpf:'',nasc:'',pix:'',pixTouched:false}}
-function novaAssin(){return {img:'',w:0,h:0,nome:'',dt:''}}
-var S={turno:'T1',data:hoje(),unidade:'',setor:'',entrada:'08:00',saida:'17:00',cargo:'AF',pessoas:[novaPessoa()],assin:novaAssin()};
+var S={turno:'T1',data:hoje(),unidade:'',setor:'',entrada:'08:00',saida:'17:00',cargo:'AF',pessoas:[novaPessoa()]};
 
-function load(){try{var r=localStorage.getItem(KEY);if(r){var o=JSON.parse(r);if(o&&o.pessoas&&o.pessoas.length){o.data=hoje();S=Object.assign(S,o)}}}catch(e){}}
+function load(){try{var r=localStorage.getItem(KEY);if(r){var o=JSON.parse(r);if(o&&o.pessoas&&o.pessoas.length){o.data=hoje();delete o.assin;S=Object.assign(S,o)}}}catch(e){}}
 function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
 
 function fillSelect(el,opts,ph){el.innerHTML='';if(ph){var o=document.createElement('option');o.value='';o.textContent=ph;el.appendChild(o)}opts.forEach(function(v){var o=document.createElement('option');o.value=v;o.textContent=v;el.appendChild(o)})}
@@ -752,7 +717,6 @@ function validar(){
   if(!S.entrada)bad($('entrada'),null,'');
   if(!S.saida)bad($('saida'),null,'');
   if(!S.cargo.trim())bad($('cargo'),null,'');
-  if(S.assin.img&&!S.assin.nome.trim())bad($('signome'),null,'');
   var vistos={};
   S.pessoas.forEach(function(p,i){
     var card=$('lista').children[i];
@@ -774,10 +738,7 @@ function validar(){
 
 function dados(){
   var dp=S.data.split('-');
-  var as=null;
-  if(S.assin.img){var t=new Date(S.assin.dt);as={img:S.assin.img,w:S.assin.w,h:S.assin.h,nome:S.assin.nome.trim().replace(/\s+/g,' ').toUpperCase(),
-    dtBR:pad(t.getDate())+'/'+pad(t.getMonth()+1)+'/'+t.getFullYear()+' '+pad(t.getHours())+':'+pad(t.getMinutes())}}
-  return {assin:as,unidade:S.unidade,turno:S.turno,setor:S.setor,dataBR:dp[2]+'/'+dp[1]+'/'+dp[0],
+  return {unidade:S.unidade,turno:S.turno,setor:S.setor,dataBR:dp[2]+'/'+dp[1]+'/'+dp[0],
     pessoas:S.pessoas.map(function(p){return {nome:p.nome.trim().replace(/\s+/g,' '),cpf:p.cpf,nasc:p.nasc,pix:p.pix.trim(),cargo:S.cargo.trim().toUpperCase(),entrada:S.entrada,saida:S.saida}})};
 }
 function nomeArquivo(ext){var dp=S.data.split('-'),pt=S.unidade.split(' - '),loc=pt[pt.length-1];
@@ -840,63 +801,6 @@ function clicarEnviar(){
   $('foto').value='';$('foto').click();
 }
 
-// ---- Quadro de assinatura (canvas) ----
-var cv,cx,dpr=1,cssW=0,cssH=170,strokes=[],cur=null,last=null,restored=false,bb=null;
-function sigSetup(){
-  dpr=window.devicePixelRatio||1;cssW=cv.clientWidth;
-  cv.width=Math.round(cssW*dpr);cv.height=Math.round(cssH*dpr);
-  cx=cv.getContext('2d');cx.setTransform(dpr,0,0,dpr,0,0);
-  cx.lineWidth=2.6;cx.lineCap='round';cx.lineJoin='round';cx.strokeStyle='#000';cx.fillStyle='#000';
-}
-function sigRedraw(){
-  cx.clearRect(0,0,cssW,cssH);
-  if(strokes.length){strokes.forEach(function(st){
-    if(st.length===1){cx.beginPath();cx.arc(st[0].x,st[0].y,1.3,0,6.2832);cx.fill();return}
-    cx.beginPath();cx.moveTo(st[0].x,st[0].y);for(var i=1;i<st.length;i++)cx.lineTo(st[i].x,st[i].y);cx.stroke()})}
-  else if(restored&&S.assin.img){
-    var im=new Image();im.onload=function(){var k=Math.min(1,(cssW-20)/(S.assin.w/dpr||S.assin.w),(cssH-20)/(S.assin.h/dpr||S.assin.h));
-      var w=(S.assin.w/dpr)*k,h=(S.assin.h/dpr)*k;cx.drawImage(im,(cssW-w)/2,(cssH-h)/2,w,h)};im.src=S.assin.img}
-}
-function sigPt(e){var r=cv.getBoundingClientRect();return {x:e.clientX-r.left,y:e.clientY-r.top}}
-function sigStatus(){
-  var t=S.assin.img?new Date(S.assin.dt):null;
-  $('sigst').textContent=t?'Assinatura registrada em '+pad(t.getDate())+'/'+pad(t.getMonth()+1)+'/'+t.getFullYear()+' '+pad(t.getHours())+':'+pad(t.getMinutes()):'';
-}
-function sigExport(){
-  if(!strokes.length)return;
-  var minX=1e9,minY=1e9,maxX=-1e9,maxY=-1e9;
-  strokes.forEach(function(st){st.forEach(function(p){if(p.x<minX)minX=p.x;if(p.x>maxX)maxX=p.x;if(p.y<minY)minY=p.y;if(p.y>maxY)maxY=p.y})});
-  var pd=6,x=Math.max(0,minX-pd),y=Math.max(0,minY-pd),w=Math.min(cssW,maxX+pd)-x,h=Math.min(cssH,maxY+pd)-y;
-  if(w<8||h<8)return;
-  var k=Math.min(dpr,700/w),o=document.createElement('canvas');o.width=Math.max(1,Math.round(w*k));o.height=Math.max(1,Math.round(h*k));
-  o.getContext('2d').drawImage(cv,x*dpr,y*dpr,w*dpr,h*dpr,0,0,o.width,o.height);
-  S.assin.img=o.toDataURL('image/png');S.assin.w=o.width;S.assin.h=o.height;S.assin.dt=new Date().toISOString();
-  save();sigStatus();
-}
-function sigClear(){strokes=[];cur=null;restored=false;S.assin.img='';S.assin.w=0;S.assin.h=0;S.assin.dt='';save();sigRedraw();sigStatus()}
-function sigInit(){
-  cv=$('sigpad');sigSetup();
-  if(S.assin.img){restored=true;sigRedraw();sigStatus()}
-  $('signome').value=S.assin.nome;
-  $('signome').addEventListener('input',function(){S.assin.nome=this.value;this.classList.remove('invalid');save()});
-  cv.addEventListener('pointerdown',function(e){
-    if(restored){msg('Toque em Limpar assinatura para refazer');return}
-    e.preventDefault();try{cv.setPointerCapture(e.pointerId)}catch(x){}
-    var p=sigPt(e);cur=[p];last=p;strokes.push(cur);
-    cx.beginPath();cx.arc(p.x,p.y,1.3,0,6.2832);cx.fill();cx.beginPath();cx.moveTo(p.x,p.y);
-  });
-  cv.addEventListener('pointermove',function(e){
-    if(!cur)return;e.preventDefault();
-    var q=sigPt(e),m={x:(last.x+q.x)/2,y:(last.y+q.y)/2};
-    cx.quadraticCurveTo(last.x,last.y,m.x,m.y);cx.stroke();cx.beginPath();cx.moveTo(m.x,m.y);
-    last=q;cur.push(q);
-  });
-  function fim(e){if(!cur)return;if(cur.length>1){cx.lineTo(last.x,last.y);cx.stroke()}cur=null;sigExport()}
-  cv.addEventListener('pointerup',fim);cv.addEventListener('pointercancel',fim);
-  $('sigclr').addEventListener('click',sigClear);
-  window.addEventListener('resize',function(){if(cv.clientWidth!==cssW&&!cur){sigSetup();sigRedraw()}});
-}
-
 function init(){
   load();
   fillSelect($('turno'),TURNOS);fillSelect($('unidade'),UNIDADES,'Selecione...');fillSelect($('setor'),SETORES,'Selecione...');
@@ -905,7 +809,6 @@ function init(){
     $(id).addEventListener('input',function(){S[id]=this.value;this.classList.remove('invalid');var e=$('e-'+id);if(e)e.textContent='';save()});
   });
   render();
-  sigInit();
   $('lista').addEventListener('input',function(ev){
     var t=ev.target,i=t.getAttribute('data-i'),f=t.getAttribute('data-f');if(i===null)return;
     var p=S.pessoas[+i],v=t.value;
@@ -922,7 +825,7 @@ function init(){
   $('gerarpdf').addEventListener('click',baixarPdf);
   $('enviar').addEventListener('click',clicarEnviar);
   $('foto').addEventListener('change',function(){if(this.files&&this.files[0])enviarLista(this.files[0])});
-  $('limpar').addEventListener('click',function(){if(confirm('Apagar todas as pessoas da lista?')){S.pessoas=[novaPessoa()];S.assin.nome='';$('signome').value='';sigClear();save();clearErr();render()}});
+  $('limpar').addEventListener('click',function(){if(confirm('Apagar todas as pessoas da lista?')){S.pessoas=[novaPessoa()];save();clearErr();render()}});
   if('serviceWorker' in navigator&&location.protocol.indexOf('http')===0){
     var tinha=!!navigator.serviceWorker.controller,rl=false;
     navigator.serviceWorker.addEventListener('controllerchange',function(){if(tinha&&!rl){rl=true;location.reload()}});
