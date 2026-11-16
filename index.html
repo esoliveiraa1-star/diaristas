@@ -531,7 +531,7 @@ async function buildXlsx(ExcelJS, templateBuf, d) {
     normalStyle[c] = clone(ws.getCell(FIRST + 1, c).style);
     const ls = clone(normalStyle[c]);
     ls.font = Object.assign({}, ls.font, { bold: true });
-    ls.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD9D9D9' }, bgColor: { indexed: 64 } };
+    ls.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFA6A6A6' }, bgColor: { indexed: 64 } };
     ls.alignment = Object.assign({}, ls.alignment, { horizontal: 'center' });
     leaderStyle[c] = ls;
   }
@@ -636,7 +636,7 @@ function buildPdf(jsPDF, logoB64, d) {
       var idx = p * perPage + r, y = yRows + r * RH, pe = d.pessoas[idx];
       var leader = !!pe && /^\*{3}.*\*{3}$/.test(pe.nome);
       doc.setLineWidth(0.1);
-      if (leader) { doc.setFillColor(217, 217, 217); doc.rect(M, y, W, RH, 'F'); }
+      if (leader) { doc.setFillColor(166, 166, 166); doc.rect(M, y, W, RH, 'F'); }
       for (var c = 0; c < 9; c++) doc.rect(cx[c], y, cw[c], RH);
       if (!pe) continue;
       var my = y + RH / 2, st = leader ? 'bold' : 'normal';
